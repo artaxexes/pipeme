@@ -1,0 +1,150 @@
+<!DOCTYPE>
+<html lang="pt">
+    <head>
+        <title>Pipeme</title>
+        <meta charset="utf-8">
+        <meta name="description" content="Automating Pipedrive data download as CSV file">
+        <meta name="keywords" content="pipedrive, automating, download, csv">
+        <meta name="author" content="Artaxexes J. Ferreira">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <!-- <link rel="icon" href="img/favicon.ico" type="image/x-icon"> -->
+        <!-- angularjs -->
+        <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.6/angular.min.js"></script>
+        <!-- jquery -->
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+        <!-- jqueryui -->
+        <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min.js"></script>
+        <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/themes/smoothness/jquery-ui.css">
+        <!-- bootstrap -->
+        <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+        <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+        <!-- internal style -->
+        <style>
+            .jumbotron,
+            .col-md-12:nth-child(1),
+            #panel-footer {
+                        text-align: center
+                }
+        </style>
+        <script>
+            $(function(){
+                $("#accordion").accordion({
+                    collapsible: true,
+                    active: false
+                });
+            });
+        </script>
+    </head>
+    <body>
+        <div class="container">
+            <div class="jumbotron">
+                <a href="index.html"><h1>lnk2pipe</h1></a>
+                <p>Interação (um pouco) automatizada com <a href="http://www.pipedrive.com" target="_blank">Pipedrive</a></p>
+            </div>
+            <div class="row">
+                <div class="col-md-12">
+                    <p>Download de dados do <a href="http://www.pipedrive.com" target="_blank">Pipedrive</a> em formato de arquivo <a href="https://tools.ietf.org/html/rfc4180" target="_blank">CSV</a></p>
+                    <div class="form-group">
+                        <label for"token">Token:</label>
+                        <input type="text" class="form-control" id="token" size="40" value="" readonly>
+                        <span class="help-block">Seu token de API pessoal que pode ser encontrado em Ajustes > Pessoal > API no site do Pipedrive</span>
+                    </div>
+                </div>
+                <div class="col-md-12">
+                    <div id="accordion">
+                        <h3>Activity fields</h3>
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-default" id="activityFields">Download</button>
+                        </div>
+                        <h3>Deal fields</h3>
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-default" id="dealFields">Download</button>
+                        </div>
+                        <h3>Note fields</h3>
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-default" id="noteFields">Download</button>
+                        </div>
+                        <h3>Organization fields</h3>
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-default" id="organizationFields">Download</button>
+                        </div>
+                        <h3>Person fields</h3>
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-default" id="personFields">Download</button>
+                        </div>
+                        <h3>Product fields</h3>
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-default" id="productFields">Download</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-12">
+                    <div class="panel-footer" id="panel-footer">
+                        <p>Problemas? <a href="mailto:anddrei.ferreira@biggdata.com.br?Subject=pipedown" target="_top">anddrei.ferreira@biggdata.com.br</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script>
+            var token = document.getElementById("token").value;
+            $("button").click(function(event){
+                var token = document.getElementById("token").value;
+                var target = event.target.id;
+                var url = "https://api.pipedrive.com/v1/" + target + "?api_token=" + token;
+                console.log(url);
+                $.ajax({url: url,
+                       dataType: "json",
+                       success: function(data){
+                           downloadRegs(data, target);
+                       }
+                });
+                function downloadRegs(data, oldTarget){
+                    var target = (oldTarget == "activityFields" ) ? "activities" : (oldTarget == "dealFields") ? "deals" : (oldTarget == "noteFields") ? "notes" : (oldTarget == "organizationFields") ? "organizations" : (oldTarget == "personFields") ? "persons" : (oldTarget == "productFields") ? "products" : "none";
+                    if(target != "none"){
+                        /*
+                        var fields = ":(";
+                        var length = data["data"].length;
+                        for(var i = 1; i <= length; i += 1){
+                            fields += (i == length) ? data["data"][i - 1] + ")" : data["data"][i - 1] + ",";
+                        }
+                        */
+                        var start = 0;
+                        var limit = 500;
+                        url = "https://api.pipedrive.com/v1/" + target + "?api_token=" + token + "&start=" + start + "&limit=" + limit;
+                        $.ajax({url: url,
+                               dataType: "json",
+                               success: function(data){
+                                   addRowInFile(data);
+                               }
+                        });
+                    }
+                }
+                function addRowInFile(data){
+                    var props = [];
+                    for(var prop in data["data"][0]){
+                            props.push(prop);
+                    }
+                    var csv = "data:text/csv;charset=utf-8,";
+                    for(var i = 1; i <= props.length; i += 1){
+                        csv += (i == props.length) ? props[i-1] + "\r\n" : props[i-1] + ",";
+                    }
+                    for(var i = 1; i <= data["data"].length; i += 1){
+                        for(var j = 1; j <= props.length; j += 1){
+                            csv += (j == props.length) ? data["data"][i-1][props[j-1]] + "\r\n" : data["data"][i-1][props[j-1]] + ",";
+                        }
+                    }
+                    downFile(csv);
+                }
+                function downFile(file){
+                    var encodedURI = encodeURI(file);
+                    var link = document.createElement("a");
+                    link.setAttribute("href", encodedURI);
+                    link.setAttribute("download", new Date().toISOString() + ".csv");
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }
+            });
+        </script>
+    </body>
+</html>
